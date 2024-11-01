@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: media-service
+
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:4002/db_media
+    username: postgres
+    password: qwer
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+
+storage:
+  client-path: /storage/**
+  server-path: C:/Users/iLJiMae/OneDrive/Desktop/media-storage/
+  base-uri: http://localhost:8080/storage/
