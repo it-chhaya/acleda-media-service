@@ -12,8 +12,13 @@ spring:
     hibernate:
       ddl-auto: create-drop
     show-sql: true
+  servlet:
+    multipart:
+      max-file-size: 1000MB
+      max-request-size: 1000MB
 
 storage:
   client-path: /storage/**
   server-path: C:/Users/iLJiMae/OneDrive/Desktop/media-storage/
   base-uri: http://localhost:8080/storage/
+
