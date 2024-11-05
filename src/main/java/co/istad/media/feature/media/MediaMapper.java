@@ -2,6 +2,7 @@ package co.istad.media.feature.media;
 
 import co.istad.media.domain.Media;
 import co.istad.media.feature.media.dto.MediaResponse;
+import org.mapstruct.Context;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
@@ -14,11 +15,11 @@ public abstract class MediaMapper {
     private String baseUri;
 
     @Mapping(source = "name", target = "uri", qualifiedByName = "mapUri")
-    abstract MediaResponse toMediaResponse(Media media);
+    abstract MediaResponse toMediaResponse(Media media, @Context String folderName);
 
     @Named("mapUri")
-    String mapUri(String name) {
-        return baseUri + name;
+    String mapUri(String name, @Context String folderName) {
+        return baseUri + folderName + "/" + name;
     }
 
 }

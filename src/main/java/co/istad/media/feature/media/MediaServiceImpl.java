@@ -4,17 +4,22 @@ import co.istad.media.domain.Media;
 import co.istad.media.feature.media.dto.MediaResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -27,8 +32,55 @@ public class MediaServiceImpl implements MediaService {
     @Value("${storage.server-path}")
     private String serverPath;
 
-    @Value("${storage.base-uri}")
-    private String baseUri;
+
+    @Override
+    public Resource downloadMediaByName(String name) {
+
+        Media media = mediaRepository
+                .findByName(name)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Media not found"
+                        ));
+
+        String folderName = getFolderName(media.getContentType());
+
+        Path path = Paths.get(serverPath + folderName + "/" + media.getName());
+        try {
+            Resource resource = new UrlResource(path.toUri());
+
+            if (!resource.exists()) {
+                throw new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Media file not found"
+                );
+            }
+
+            return resource;
+        } catch (MalformedURLException e) {
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Media file load failed"
+            );
+        }
+    }
+
+
+    @Override
+    public MediaResponse findMediaByName(String name) {
+
+        Media media = mediaRepository
+                .findByName(name)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Media not found"
+                        ));
+
+        return mediaMapper.toMediaResponse(media, getFolderName(media.getContentType()));
+    }
+
 
     @Override
     public List<MediaResponse> uploadMultiple(List<MultipartFile> files) {
@@ -44,8 +96,6 @@ public class MediaServiceImpl implements MediaService {
     @Override
     public MediaResponse uploadSingle(MultipartFile file) {
 
-        // TODO
-
         // Extract extension
         // cloud.png
         // png
@@ -58,14 +108,7 @@ public class MediaServiceImpl implements MediaService {
         // Generate media file
         String mediaName = UUID.randomUUID() + "." + extension;
 
-        String contentType = file.getContentType().split("/")[0];
-        System.out.println(contentType);
-        String folderName = switch (contentType) {
-            case "image" -> "image";
-            case "video" -> "video";
-            case "application" -> "report";
-            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid file format!");
-        };
+        String folderName = getFolderName(Objects.requireNonNull(file.getContentType()));
 
         // Create path object
         Path path = Path.of(serverPath + folderName + "/" + mediaName);
@@ -80,7 +123,7 @@ public class MediaServiceImpl implements MediaService {
         }
 
         Media media = new Media();
-        media.setName(folderName + "/" + mediaName);
+        media.setName(mediaName);
         media.setContentType(file.getContentType());
         media.setSize(file.getSize());
         media.setExtension(extension);
@@ -90,7 +133,19 @@ public class MediaServiceImpl implements MediaService {
 
         media = mediaRepository.save(media);
 
-        return mediaMapper.toMediaResponse(media);
+        return mediaMapper.toMediaResponse(media, folderName);
+    }
+
+
+    // Reusable logic for get folder name based on the standard content type
+    private String getFolderName(String fullContentType) {
+        String contentType = fullContentType.split("/")[0];
+        return switch (contentType) {
+            case "image" -> "image";
+            case "video" -> "video";
+            case "application" -> "report";
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid file format!");
+        };
     }
 
 }
